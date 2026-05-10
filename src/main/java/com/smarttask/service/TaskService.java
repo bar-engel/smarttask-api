@@ -99,10 +99,10 @@ public class TaskService {
 
     private Task findTaskAndVerifyOwnership(Long taskId, String username) {
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + taskId));
+                .orElseThrow(() -> new ResourceNotFoundException("Task", taskId));
 
         if (!task.getUser().getUsername().equals(username)) {
-            throw new UnauthorizedException("Access denied to task: " + taskId);
+            throw new UnauthorizedException();
         }
 
         return task;

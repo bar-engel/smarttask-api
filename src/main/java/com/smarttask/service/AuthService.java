@@ -1,7 +1,7 @@
 package com.smarttask.service;
 
-import com.smarttask.exception.DuplicateResourceException;
 import com.smarttask.exception.ResourceNotFoundException;
+import com.smarttask.exception.UserAlreadyExistsException;
 import com.smarttask.model.dto.request.LoginRequest;
 import com.smarttask.model.dto.request.RegisterRequest;
 import com.smarttask.model.dto.response.AuthResponse;
@@ -30,10 +30,10 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new DuplicateResourceException("Username already taken: " + request.getUsername());
+            throw new UserAlreadyExistsException("username", request.getUsername());
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Email already registered: " + request.getEmail());
+            throw new UserAlreadyExistsException("email", request.getEmail());
         }
 
         User user = User.builder()
