@@ -1,0 +1,36 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+
+# Spring Boot fat jar
+spring-boot-*.jar
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+
+# IDE - VS Code
+.vscode/
+
+# IDE - Eclipse
+*.eclipse
+.classpath
+.project
+.settings/
+
+# Environment & secrets
+.env
+application-local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
