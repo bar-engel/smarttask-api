@@ -19,7 +19,7 @@ import java.util.List;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Tag(name = "Users", description = "User profile and admin user management")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = "Bearer Authentication")
 public class UserController {
 
     private final UserService userService;

@@ -1,91 +1,96 @@
 # SmartTask API
 
-A production-ready REST API for task management, built with Java 17, Spring Boot 3, and PostgreSQL.
+A production-ready task management REST API built with Java 17 and Spring Boot 3. Supports JWT authentication, role-based access control, full task CRUD with filtering, and interactive Swagger documentation — all deployable with a single Docker command.
+
+![Java](https://img.shields.io/badge/Java-17-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [API Endpoints](#api-endpoints)
+- [Request & Response Examples](#request--response-examples)
+- [Architecture](#architecture)
+- [Running Tests](#running-tests)
+- [API Documentation](#api-documentation)
+- [Security Notes](#security-notes)
+
+---
 
 ## Features
 
-- JWT Authentication & Authorization
-- Full CRUD for task management
+- JWT-based stateless authentication with 24-hour token expiration
 - Role-based access control (USER / ADMIN)
-- Input validation with detailed error responses
-- Global exception handling
-- Dockerized deployment
-- Swagger UI documentation
-- Unit & Integration tests
+- Full CRUD for tasks with status and priority filtering
+- Task statistics endpoint (counts by status)
+- Global exception handling with field-level validation errors
+- Swagger UI with interactive Bearer token authentication
+- Multi-stage Docker build + Docker Compose for one-command deployment
+- Unit tests (services) and integration tests (controllers) using H2 in-memory database
+
+---
 
 ## Tech Stack
 
-| Technology       | Version | Purpose               |
-|------------------|---------|-----------------------|
-| Java             | 17      | Core language         |
-| Spring Boot      | 3.2.5   | Framework             |
-| Spring Security  | 6.x     | Authentication        |
-| PostgreSQL       | 15      | Database              |
-| JWT (jjwt)       | 0.12.3  | Token management      |
-| Docker           | latest  | Containerization      |
-| Swagger/OpenAPI  | 2.3.0   | API Documentation     |
-| JUnit 5          | latest  | Testing               |
-| Lombok           | latest  | Boilerplate reduction |
+| Technology          | Version | Purpose                        |
+|---------------------|---------|--------------------------------|
+| Java                | 17      | Core language                  |
+| Spring Boot         | 3.2.5   | Web framework                  |
+| Spring Security     | 6.x     | Authentication & authorization |
+| PostgreSQL          | 15      | Primary database               |
+| JWT (jjwt)          | 0.12.3  | Token generation & validation  |
+| Docker / Compose    | latest  | Containerization               |
+| Swagger / OpenAPI   | 2.3.0   | Interactive API documentation  |
+| JUnit 5             | latest  | Unit & integration testing     |
+| H2                  | latest  | In-memory database for tests   |
+| Lombok              | latest  | Boilerplate reduction          |
 
-## Project Structure
-
-```
-src/main/java/com/smarttask/
-├── controller/          # REST controllers — HTTP request/response handling
-├── service/             # Business logic + TaskMapper DTO converter
-├── repository/          # Spring Data JPA interfaces
-├── model/
-│   ├── entity/          # JPA entities (User, Task) and enums
-│   └── dto/
-│       ├── request/     # RegisterRequest, LoginRequest, CreateTaskRequest, UpdateTaskRequest
-│       └── response/    # AuthResponse, TaskResponse, UserResponse
-├── security/
-│   ├── jwt/             # JwtService, JwtAuthFilter
-│   └── UserDetailsServiceImpl.java
-├── config/              # SecurityConfig, OpenApiConfig
-└── exception/           # GlobalExceptionHandler, custom exceptions, ErrorResponse
-```
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- Java 17+
-- Maven 3.8+
-- Docker & Docker Compose (for containerized setup)
+- Docker & Docker Compose
+
+That is the only hard requirement for the recommended setup. Java 17 and Maven 3.8+ are only needed for local development.
 
 ---
 
 ### Option 1 — Docker (Recommended)
 
 ```bash
-# Build the application JAR first
-mvn package -DskipTests
-
-# Start PostgreSQL + API together
 docker-compose up --build
 ```
 
-The API will be available at `http://localhost:8080`.
+This spins up PostgreSQL and the API together. The application will be available at `http://localhost:8080`.
 
 ---
 
 ### Option 2 — Local Development
 
-**1. Start PostgreSQL**
+**1. Start the database**
 
 ```bash
-# Start only the database container
 docker-compose up postgres
 ```
 
-Or configure a local PostgreSQL instance with:
-| Setting  | Value          |
-|----------|----------------|
-| Database | `smarttask_db` |
+Or point a local PostgreSQL instance at:
+
+| Setting  | Value            |
+|----------|------------------|
+| Database | `smarttask_db`   |
 | Username | `smarttask_user` |
 | Password | `smarttask_pass` |
-| Port     | `5432`         |
+| Port     | `5432`           |
 
 **2. Run the application**
 
@@ -95,59 +100,61 @@ mvn spring-boot:run
 
 ---
 
-### Environment Variables
+## Environment Variables
 
-When running without Docker, the following properties can be overridden via environment variables:
+Override any of these at runtime (Docker Compose, Kubernetes, or shell export):
 
-| Variable                    | Default                                | Description          |
-|-----------------------------|----------------------------------------|----------------------|
-| `SPRING_DATASOURCE_URL`     | `jdbc:postgresql://localhost:5432/...` | Database URL         |
-| `SPRING_DATASOURCE_USERNAME`| `smarttask_user`                       | DB username          |
-| `SPRING_DATASOURCE_PASSWORD`| `smarttask_pass`                       | DB password          |
-| `APP_JWT_SECRET`            | *(see application.properties)*         | JWT signing secret   |
-| `APP_JWT_EXPIRATION`        | `86400000` (24 h)                      | Token TTL in ms      |
+| Variable                     | Default                                        | Description               |
+|------------------------------|------------------------------------------------|---------------------------|
+| `SPRING_DATASOURCE_URL`      | `jdbc:postgresql://localhost:5432/smarttask_db`| Database connection URL   |
+| `SPRING_DATASOURCE_USERNAME` | `smarttask_user`                               | Database username         |
+| `SPRING_DATASOURCE_PASSWORD` | `smarttask_pass`                               | Database password         |
+| `APP_JWT_SECRET`             | *(see application.properties)*                 | HMAC-SHA256 signing key   |
+| `APP_JWT_EXPIRATION`         | `86400000`                                     | Token TTL in milliseconds |
+
+> **Production note:** Always replace `APP_JWT_SECRET` with a securely generated value before deploying.
 
 ---
 
 ## API Endpoints
 
-### Authentication
+### Authentication — no token required
 
-| Method | Path                   | Auth     | Description                          |
-|--------|------------------------|----------|--------------------------------------|
-| POST   | `/api/auth/register`   | None     | Register a new user (returns JWT)    |
-| POST   | `/api/auth/login`      | None     | Login and receive a JWT token        |
+| Method | Endpoint               | Description                       | Response      |
+|--------|------------------------|-----------------------------------|---------------|
+| POST   | `/api/auth/register`   | Register a new user               | `201` + JWT   |
+| POST   | `/api/auth/login`      | Login and receive a JWT token     | `200` + JWT   |
 
-### Tasks
+### Tasks — JWT required
 
-| Method | Path                   | Auth     | Description                                          |
-|--------|------------------------|----------|------------------------------------------------------|
-| GET    | `/api/tasks`           | JWT      | Get all tasks (optional `?status=` / `?priority=`)   |
-| POST   | `/api/tasks`           | JWT      | Create a new task                                    |
-| GET    | `/api/tasks/stats`     | JWT      | Task counts grouped by status                        |
-| GET    | `/api/tasks/{id}`      | JWT      | Get a specific task by ID                            |
-| PUT    | `/api/tasks/{id}`      | JWT      | Update a task (partial — only non-null fields)       |
-| DELETE | `/api/tasks/{id}`      | JWT      | Delete a task                                        |
+| Method | Endpoint               | Description                                               | Response      |
+|--------|------------------------|-----------------------------------------------------------|---------------|
+| GET    | `/api/tasks`           | List your tasks (filter by `?status=` or `?priority=`)    | `200`         |
+| POST   | `/api/tasks`           | Create a new task                                         | `201`         |
+| GET    | `/api/tasks/stats`     | Task counts grouped by status                             | `200`         |
+| GET    | `/api/tasks/{id}`      | Get a specific task by ID                                 | `200`         |
+| PUT    | `/api/tasks/{id}`      | Update a task (only non-null fields applied)              | `200`         |
+| DELETE | `/api/tasks/{id}`      | Delete a task                                             | `204`         |
 
-### Users
+### Users — JWT required
 
-| Method | Path                   | Auth          | Description                        |
-|--------|------------------------|---------------|------------------------------------|
-| GET    | `/api/users/me`        | JWT           | Get the current user's profile     |
-| GET    | `/api/users`           | JWT + ADMIN   | List all users (admin only)        |
+| Method | Endpoint               | Auth Required | Description                    |
+|--------|------------------------|---------------|--------------------------------|
+| GET    | `/api/users/me`        | Any user      | Get the current user's profile |
+| GET    | `/api/users`           | ADMIN only    | List all registered users      |
 
-### Query Parameters
+### Task Filter Parameters
 
-`GET /api/tasks` supports optional filtering:
+`GET /api/tasks` supports optional query parameters:
 
-| Parameter  | Values                        | Example                         |
-|------------|-------------------------------|---------------------------------|
-| `status`   | `TODO`, `IN_PROGRESS`, `DONE` | `GET /api/tasks?status=TODO`    |
-| `priority` | `LOW`, `MEDIUM`, `HIGH`       | `GET /api/tasks?priority=HIGH`  |
+| Parameter  | Accepted Values               | Example                          |
+|------------|-------------------------------|----------------------------------|
+| `status`   | `TODO`, `IN_PROGRESS`, `DONE` | `GET /api/tasks?status=TODO`     |
+| `priority` | `LOW`, `MEDIUM`, `HIGH`       | `GET /api/tasks?priority=HIGH`   |
 
 ---
 
-## Request / Response Examples
+## Request & Response Examples
 
 ### Register
 
@@ -164,6 +171,7 @@ Content-Type: application/json
 
 ```json
 HTTP/1.1 201 Created
+
 {
   "token": "eyJhbGciOiJIUzI1NiJ9...",
   "username": "john",
@@ -171,7 +179,7 @@ HTTP/1.1 201 Created
 }
 ```
 
-### Create Task
+### Create a Task
 
 ```http
 POST /api/tasks
@@ -189,6 +197,7 @@ Content-Type: application/json
 
 ```json
 HTTP/1.1 201 Created
+
 {
   "id": 1,
   "title": "Write unit tests",
@@ -201,10 +210,11 @@ HTTP/1.1 201 Created
 }
 ```
 
-### Error Response
+### Validation Error
 
 ```json
 HTTP/1.1 400 Bad Request
+
 {
   "status": 400,
   "message": "Validation failed",
@@ -224,8 +234,8 @@ The application follows a classic **layered architecture**:
 
 ```
 HTTP Request
-     │
-     ▼
+      │
+      ▼
 ┌─────────────┐
 │  Controller │  Validates input (@Valid), delegates to service, returns ResponseEntity
 └──────┬──────┘
@@ -246,16 +256,26 @@ HTTP Request
 └─────────────┘
 ```
 
-**Security filter chain** (runs before the controller):
+**Security filter chain** (executes before the controller on every request):
 
 ```
-Request → JwtAuthFilter → SecurityFilterChain → Controller
-              │
-              └─ Extracts Bearer token → validates with JwtService
-                 → loads UserDetails → sets SecurityContext
+Incoming Request
+      │
+      ▼
+JwtAuthFilter
+      │  Extracts Bearer token from Authorization header
+      │  Validates signature + expiration via JwtService
+      │  Loads UserDetails from database
+      │  Populates SecurityContext
+      ▼
+SecurityFilterChain
+      │  Permits: /api/auth/**, /swagger-ui/**, /api-docs/**
+      │  Requires authentication: everything else
+      ▼
+Controller
 ```
 
-**Exception flow:**
+**Exception handling flow:**
 
 ```
 Service throws RuntimeException
@@ -263,7 +283,26 @@ Service throws RuntimeException
         ▼
 GlobalExceptionHandler (@RestControllerAdvice)
         │
-        └─ Maps to ErrorResponse + HTTP status code
+        └─ Maps exception type → HTTP status + ErrorResponse JSON
+```
+
+### Project Structure
+
+```
+src/main/java/com/smarttask/
+├── controller/          # REST controllers — HTTP handling only
+├── service/             # Business logic + TaskMapper (entity ↔ DTO)
+├── repository/          # Spring Data JPA interfaces
+├── model/
+│   ├── entity/          # User, Task entities; Role, TaskStatus, TaskPriority enums
+│   └── dto/
+│       ├── request/     # RegisterRequest, LoginRequest, CreateTaskRequest, UpdateTaskRequest
+│       └── response/    # AuthResponse, TaskResponse, UserResponse
+├── security/
+│   ├── jwt/             # JwtService, JwtAuthFilter
+│   └── UserDetailsServiceImpl.java
+├── config/              # SecurityConfig, SwaggerConfig, DataInitializer
+└── exception/           # GlobalExceptionHandler, custom exceptions, ErrorResponse
 ```
 
 ---
@@ -274,45 +313,46 @@ GlobalExceptionHandler (@RestControllerAdvice)
 # Run all tests
 mvn test
 
-# Run only unit tests (fast, no Spring context)
+# Run only unit tests (no Spring context required)
 mvn test -Dtest="TaskServiceTest,AuthServiceTest"
 
 # Run only integration tests
 mvn test -Dtest="TaskControllerTest"
 ```
 
-Tests use **H2 in-memory database** (activated via the `test` Spring profile) so no running PostgreSQL is required.
+Tests use an **H2 in-memory database** (activated by the `test` Spring profile), so no running PostgreSQL is needed.
 
-| Test Class            | Type        | Coverage                                 |
-|-----------------------|-------------|------------------------------------------|
-| `TaskServiceTest`     | Unit        | createTask, getById, update, delete      |
-| `AuthServiceTest`     | Unit        | register, login, duplicate validation    |
-| `TaskControllerTest`  | Integration | All endpoints, status codes, JSON shape  |
+| Test Class           | Type        | Coverage                                  |
+|----------------------|-------------|-------------------------------------------|
+| `AuthServiceTest`    | Unit        | register, login, duplicate user detection |
+| `TaskServiceTest`    | Unit        | createTask, getById, update, delete       |
+| `TaskControllerTest` | Integration | All endpoints — status codes, JSON shape  |
 
 ---
 
 ## API Documentation
 
-Swagger UI is available at:
+After startup, interactive Swagger UI is available at:
 
 ```
 http://localhost:8080/swagger-ui.html
 ```
 
-OpenAPI JSON spec:
+Raw OpenAPI spec (JSON):
 
 ```
 http://localhost:8080/api-docs
 ```
 
-Click **Authorize** in the Swagger UI and paste your JWT token (without the `Bearer ` prefix) to authenticate all requests.
+Click **Authorize** in the Swagger UI and paste your JWT token (without the `Bearer ` prefix) to authenticate all subsequent requests directly from the browser.
 
 ---
 
 ## Security Notes
 
-- Passwords are hashed with **BCrypt** before storage — plain text is never persisted.
-- JWT tokens are signed with **HMAC-SHA256** using the secret defined in `app.jwt.secret`.
-- Replace the default JWT secret with a securely generated value before deploying to production.
-- Tokens expire after **24 hours** by default (`app.jwt.expiration=86400000`).
-- CSRF protection is disabled — appropriate for a stateless JWT API consumed by SPAs or mobile clients.
+- Passwords are hashed with **BCrypt** — plain text is never stored.
+- JWT tokens are signed with **HMAC-SHA256** using the secret in `app.jwt.secret`.
+- Tokens expire after **24 hours** (`app.jwt.expiration=86400000` ms).
+- CSRF protection is disabled — correct for a stateless JWT API consumed by SPAs or mobile clients.
+- Each task endpoint verifies ownership — users cannot read, modify, or delete tasks belonging to another user.
+- Replace the default JWT secret with a cryptographically secure value before any production deployment.

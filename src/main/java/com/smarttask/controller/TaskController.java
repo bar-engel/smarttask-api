@@ -23,7 +23,7 @@ import java.util.Map;
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
 @Tag(name = "Tasks", description = "Create, read, update, and delete tasks")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = "Bearer Authentication")
 public class TaskController {
 
     private final TaskService taskService;

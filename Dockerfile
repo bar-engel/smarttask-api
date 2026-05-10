@@ -1,5 +1,16 @@
-FROM openjdk:17-jdk-slim
+# ── Stage 1: build ────────────────────────────────────────────────────────────
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+
+# Cache dependency layer separately from source changes
+COPY pom.xml .
+RUN mvn dependency:go-offline -q
+
+COPY src ./src
+RUN mvn package -DskipTests -q
+
+# ── Stage 2: runtime ───────────────────────────────────────────────────────────
+FROM eclipse-temurin:17-jre-slim
 VOLUME /tmp
-ARG JAR_FILE=target/*.jar
-COPY ${JAR_FILE} app.jar
-ENTRYPOINT ["java","-jar","/app.jar"]
+COPY --from=build /app/target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]
